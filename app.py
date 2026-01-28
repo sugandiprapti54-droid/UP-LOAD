@@ -547,7 +547,6 @@ def run_ffmpeg(video_path, stream_key, is_shorts, log_callback, rtmp_url=None, s
     
     if "Audio Duration Mode" in mode and audio_path:
         # Mode 1: Video loops, audio starts after 15s, stop when audio ends
-        # We need to get audio duration first
         try:
             import subprocess
             result = subprocess.run(
@@ -559,18 +558,17 @@ def run_ffmpeg(video_path, stream_key, is_shorts, log_callback, rtmp_url=None, s
             audio_duration = float(result.stdout.strip())
             total_duration = audio_duration + 15
             
-            # Complex filter to delay audio by 15s and loop video
-            # adelay=15000 delays audio by 15000ms
+            # Optimized for "Excellent" status on YouTube
             cmd = [
                 "ffmpeg", "-re", "-stream_loop", "-1", "-i", video_path,
                 "-i", audio_path,
                 "-filter_complex", f"[1:a]adelay=15000|15000[delayed_audio];[0:v]{scale[4:] if scale else 'copy'}[v]",
                 "-map", "[v]", "-map", "[delayed_audio]",
                 "-t", str(total_duration),
-                "-c:v", "libx264", "-preset", "veryfast", "-b:v", "2500k",
-                "-maxrate", "2500k", "-bufsize", "5000k",
-                "-g", "60", "-keyint_min", "60",
-                "-c:a", "aac", "-b:a", "128k",
+                "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+                "-b:v", "6800k", "-maxrate", "6800k", "-bufsize", "13600k",
+                "-pix_fmt", "yuv420p", "-g", "60", "-keyint_min", "60",
+                "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
                 "-f", "flv", output_url
             ]
         except Exception as e:
@@ -578,13 +576,13 @@ def run_ffmpeg(video_path, stream_key, is_shorts, log_callback, rtmp_url=None, s
             cmd = []
 
     if not cmd:
-        # Mode 2: Normal loop full audio and video
+        # Mode 2: Normal loop full audio and video - Optimized
         cmd = [
             "ffmpeg", "-re", "-stream_loop", "-1", "-i", video_path,
-            "-c:v", "libx264", "-preset", "veryfast", "-b:v", "2500k",
-            "-maxrate", "2500k", "-bufsize", "5000k",
-            "-g", "60", "-keyint_min", "60",
-            "-c:a", "aac", "-b:a", "128k",
+            "-c:v", "libx264", "-preset", "veryfast", "-tune", "zerolatency",
+            "-b:v", "6800k", "-maxrate", "6800k", "-bufsize", "13600k",
+            "-pix_fmt", "yuv420p", "-g", "60", "-keyint_min", "60",
+            "-c:a", "aac", "-b:a", "128k", "-ar", "44100",
             "-f", "flv"
         ]
         if scale:
